@@ -2,21 +2,21 @@ package com.example.wangalbert.bookpractice.renderer;
 
 import android.content.Context;
 import android.opengl.GLSurfaceView;
+import android.util.Log;
 
 import com.example.wangalbert.bookpractice.R;
-import com.example.wangalbert.bookpractice.utils.LoggerConfig;
-import com.example.wangalbert.bookpractice.utils.ShaderHelper;
-import com.example.wangalbert.bookpractice.utils.TextResourceReader;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
+import com.example.wangalbert.bookpractice.objects.Mallet;
+import com.example.wangalbert.bookpractice.objects.Table;
+import com.example.wangalbert.bookpractice.program.ColorShaderProgram;
+import com.example.wangalbert.bookpractice.program.TextureShaderProgram;
+import com.example.wangalbert.bookpractice.utils.MatrixHelper;
+import com.example.wangalbert.bookpractice.utils.TextureHelper;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static android.opengl.GLES20.*;
-
+import static android.opengl.Matrix.*;
 
 /**
  * android
@@ -27,124 +27,73 @@ import static android.opengl.GLES20.*;
 public class AirHockeyRenderer implements GLSurfaceView.Renderer {
   private static final String TAG = "Renderer";
 
-  private final FloatBuffer vertexData;
+  // matrix
+  private final float[] projectionMatrix = new float[16];
+  private final float[] modelMatrix = new float[16];
 
-  float[] tableVerticesWithTriangles = {
-    // Order of coordinates: X, Y, R, G, B
+  // data object
+  private Table table;
+  private Mallet mallet;
 
-    // Triangle Fan
-    0f,    0f,   1f,   1f,   1f,
-    -0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
-    0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
-    0.5f,  0.5f, 0.7f, 0.7f, 0.7f,
-    -0.5f,  0.5f, 0.7f, 0.7f, 0.7f,
-    -0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
+  // shader program
+  private TextureShaderProgram textureProgram;
+  private ColorShaderProgram colorProgram;
 
-    // Line 1
-    -0.5f, 0f, 1f, 0f, 0f,
-    0.5f, 0f, 1f, 0f, 0f,
-
-    // Mallets
-    0f, -0.25f, 0f, 0f, 1f,
-    0f,  0.25f, 1f, 0f, 0f
-  };
-
+  private int texture;
   private Context context;
-
-  private int program;
-
-  private static final int POSITION_COMPONENT_COUNT = 2;
-  private static final int COLOR_COMPONENT_COUNT = 3;
-  private static final int BYTES_PER_FLOAT = 4;
-  private static final int STRIDE = (POSITION_COMPONENT_COUNT + COLOR_COMPONENT_COUNT) * BYTES_PER_FLOAT;
-
-  // uniform
-  //private static final String U_COLOR = "u_Color";
-  // attribute
-  private static final String A_POSITION = "a_Position";
-  private static final String A_COLOR = "a_Color";
-
-  private int aPositionLocation;
-  //private int uColorLocation;
-  private int aColorLocation;
-
 
   // Constructor
   public AirHockeyRenderer(Context context) {
     this.context = context;
-
-    // store vertextData into Buffer
-    vertexData = ByteBuffer.allocateDirect(tableVerticesWithTriangles.length * BYTES_PER_FLOAT)
-      .order(ByteOrder.nativeOrder())
-      .asFloatBuffer();
-    vertexData.put(tableVerticesWithTriangles);
   }
-
 
   @Override
   public void onSurfaceCreated(GL10 gl, EGLConfig config) {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-    // read shader program from raw directory
-    String vertexShaderSource =
-      TextResourceReader.readTextFileFromResource(context, R.raw.table_vertex_shader);
-    String fragmentShaderSource =
-      TextResourceReader.readTextFileFromResource(context, R.raw.table_fragment_shader);
+    table = new Table();
+    mallet = new Mallet();
 
-    // compile shader
-    int vertexShader = ShaderHelper.compileVertexShader(vertexShaderSource);
-    int fragmentShader = ShaderHelper.compileFragmentShader(fragmentShaderSource);
+    textureProgram = new TextureShaderProgram(context);
+    colorProgram = new ColorShaderProgram(context);
 
-    // link it to program
-    program = ShaderHelper.linkProgram(vertexShader, fragmentShader);
-
-    if (LoggerConfig.ON) {
-      ShaderHelper.validateProgram(program);
-    }
-
-    glUseProgram(program);
-
-    //--------------- --------------
-    aPositionLocation = glGetAttribLocation(program, A_POSITION);
-    aColorLocation = glGetAttribLocation(program, A_COLOR);
-
-    // pass the position data to dataLocation in shader
-    vertexData.position(0);
-    glVertexAttribPointer(aPositionLocation, POSITION_COMPONENT_COUNT, GL_FLOAT,
-      false, STRIDE, vertexData);
-    glEnableVertexAttribArray(aPositionLocation);
-
-    // pass the color data to colorLocation in shader
-    vertexData.position(POSITION_COMPONENT_COUNT);
-    glVertexAttribPointer(aColorLocation, COLOR_COMPONENT_COUNT, GL_FLOAT,
-      false, STRIDE, vertexData);
-    glEnableVertexAttribArray(aColorLocation);
+    // load texture
+    texture = TextureHelper.loadTexture(context, R.drawable.air_hockey_surface);
+    Log.d(TAG, "textureProgram=" + textureProgram + ", colorProgram=" + colorProgram + ", texture=" + texture);
   }
 
   @Override
   public void onSurfaceChanged(GL10 gl, int width, int height) {
+    // Set the OpenGL viewport to fill the entire surface.
     glViewport(0, 0, width, height);
+
+    MatrixHelper.perspectiveM(projectionMatrix, 45, (float) width / (float) height, 1f, 10f);
+
+    setIdentityM(modelMatrix, 0);
+    translateM(modelMatrix, 0, 0f, 0f, -2.5f);
+    rotateM(modelMatrix, 0, -60f, 1f, 0f, 0f);
+
+    final float[] temp = new float[16];
+    multiplyMM(temp, 0, projectionMatrix, 0, modelMatrix, 0);
+    System.arraycopy(temp, 0, projectionMatrix, 0, temp.length);
 
   }
 
   @Override
   public void onDrawFrame(GL10 gl) {
+    // Clear the rendering surface.
     glClear(GL_COLOR_BUFFER_BIT);
 
-    // draw the two triangle (rectangle)
-    //glUniform4f(uColorLocation, 1.0f, 1.0f, 1.0f, 1.0f);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 6);
+    // Draw the table.
+    textureProgram.useProgram();
+    textureProgram.setUniforms(projectionMatrix, texture);
+    table.bindData(textureProgram);
+    table.draw();
 
-    // draw the line
-    //glUniform4f(uColorLocation, 1.0f, 0.0f, 0.0f, 1.0f);
-    glDrawArrays(GL_LINES, 6, 2);
-
-    // Draw the first mallet blue.
-    //glUniform4f(uColorLocation, 0.0f, 0.0f, 1.0f, 1.0f);
-    glDrawArrays(GL_POINTS, 8, 1);
-
-    // Draw the second mallet red.
-    //glUniform4f(uColorLocation, 1.0f, 0.0f, 0.0f, 1.0f);
-    glDrawArrays(GL_POINTS, 9, 1);
+    // Draw the mallets.
+    colorProgram.useProgram();
+    colorProgram.setUniforms(projectionMatrix);
+    mallet.bindData(colorProgram);
+    mallet.draw();
   }
 }

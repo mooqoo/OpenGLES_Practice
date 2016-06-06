@@ -21,6 +21,23 @@ public class ShaderHelper {
     return compileShader(GL_FRAGMENT_SHADER, shaderCode);
   }
 
+  public static int buildProgram(String vertexShaderSource, String fragmentShaderSource) {
+    int program;
+
+    // Compile the shaders.
+    int vertexShader = compileVertexShader(vertexShaderSource);
+    int fragmentShader = compileFragmentShader(fragmentShaderSource);
+
+    // Link them into a shader program.
+    program = linkProgram(vertexShader, fragmentShader);
+    if (LoggerConfig.ON) {
+      validateProgram(program);
+    }
+
+    return program;
+  }
+
+
   private static int compileShader(int type, String shaderCode) {
     // create shader object
     final int shaderObjectId = glCreateShader(type);
