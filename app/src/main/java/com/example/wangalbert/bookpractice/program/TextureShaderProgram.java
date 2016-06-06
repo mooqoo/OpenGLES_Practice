@@ -1,6 +1,7 @@
 package com.example.wangalbert.bookpractice.program;
 
 import android.content.Context;
+import android.opengl.GLES20;
 
 import com.example.wangalbert.bookpractice.R;
 import static android.opengl.GLES20.*;
