@@ -17,6 +17,7 @@ import com.example.wangalbert.bookpractice.program.ColorShaderProgram;
 import com.example.wangalbert.bookpractice.program.TextureShaderProgram;
 import com.example.wangalbert.bookpractice.utils.MatrixHelper;
 import com.example.wangalbert.bookpractice.utils.TextureHelper;
+import com.example.wangalbert.bookpractice.utils.FrameBufferHelper;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -83,57 +84,17 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     // load texture
     texture = TextureHelper.loadTexture(context, R.drawable.air_hockey_surface);
 
-    // ------------------- create fbo -----------------------------
-    // generate fbo
-    int[] frameBufferObjectIds = new int[1];
-    glGenFramebuffers(1, frameBufferObjectIds, 0);
-    fboId = frameBufferObjectIds[0];
-    // bind fbo
-    glBindFramebuffer(GL_FRAMEBUFFER, fboId);
-
-    // generate render buffer
-    int[] renderObjectIds = new int[1];
-    GLES20.glGenRenderbuffers(1, renderObjectIds, 0);
-    //Bind render buffer and define buffer dimension
-    GLES20.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, renderObjectIds[0]);
-    GLES20.glRenderbufferStorage(GLES20.GL_RENDERBUFFER, GLES20.GL_DEPTH_COMPONENT16, fboWidth, fboHeight);
-
-    // generate texture
-    int[] textureObjectIds = new int[1];
-    glGenTextures(1, textureObjectIds, 0);
-    fboTextureId = textureObjectIds[0];
-    // bind texture
-    glBindTexture(GL_TEXTURE_2D, fboTextureId);
-    //Define texture parameters
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboWidth, fboHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-    // Attach texture FBO color attachment
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTextureId, 0);
-    // Attach render buffer to depth attachment
-    GLES20.glFramebufferRenderbuffer(GLES20.GL_FRAMEBUFFER, GLES20.GL_DEPTH_ATTACHMENT, GLES20.GL_RENDERBUFFER, renderObjectIds[0]);
-
-    // we are done, reset
-    GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
-    GLES20.glBindRenderbuffer(GLES20.GL_RENDERBUFFER, 0);
-    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
-
-    Log.d(TAG, "texture="+texture+", fboTextureId="+fboTextureId+", fboId="+fboId);
+    // create fbo
+    int[] tmp = FrameBufferHelper.createFrameBuffer(fboWidth, fboHeight);
+    fboId = tmp[0];
+    fboTextureId = tmp[1];
   }
 
   @Override
   public void onSurfaceChanged(GL10 gl, int width, int height) {
     viewportWidth = width;
     viewportHeight = height;
-
     setupViewport(width, height);
-
-    Log.d(TAG, "fboId=" + fboId + ", texture=" + texture);
-    Log.d(TAG, "viewportWidth=" + viewportWidth + ", viewportHeight=" + viewportHeight);
   }
 
   private void setupViewport(int width, int height) {
@@ -153,7 +114,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
   @Override
   public void onDrawFrame(GL10 gl) {
-
+    // -------- manage time -----------
     // Do a complete rotation every 10 seconds.
     long time = SystemClock.uptimeMillis() % 5000L;
     float angleInDegrees = (360.0f / 3000.0f) * ((int) time);
@@ -163,9 +124,6 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     else blur = 2.0f;
 
     Log.d(TAG, "TEST: blur = " + blur);
-
-    // Clear the rendering surface.
-    //glClear(GL_COLOR_BUFFER_BIT);
 
     // --- render to fbo ---
     glBindFramebuffer(GL_FRAMEBUFFER, fboId);
