@@ -64,6 +64,12 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
   int fboWidth = 1024;
   int fboHeight = 1024;
 
+  // FBO
+  int fboBlurId;
+  int fboBlurTextureId;
+
+
+
   // viewport
   int viewportWidth;
   int viewportHeight;
@@ -88,6 +94,15 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     int[] tmp = FrameBufferHelper.createFrameBuffer(fboWidth, fboHeight);
     fboId = tmp[0];
     fboTextureId = tmp[1];
+
+    // create fboBlur
+    tmp = FrameBufferHelper.createFrameBuffer(fboWidth, fboHeight);
+    fboBlurId = tmp[0];
+    fboBlurTextureId = tmp[1];
+
+    Log.d(TAG, "texture=" + texture);
+    Log.d(TAG, "fboId=" + fboId + ", fboTextureId=" + fboTextureId);
+    Log.d(TAG, "fboBlurId=" + fboBlurId + ", fboBlurTextureId=" + fboBlurTextureId);
   }
 
   @Override
@@ -125,54 +140,50 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
     Log.d(TAG, "TEST: blur = " + blur);
 
-    // --- render to fbo ---
+    // -------- render to fbo ---------
     glBindFramebuffer(GL_FRAMEBUFFER, fboId);
     setupViewport(fboWidth, fboWidth);
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    //draw to texture
-
-    blurHorizontalProgram.useProgram();
-    blurHorizontalProgram.setUniforms(projectionMatrix, texture, blur);
-    blurTable.bindData(blurHorizontalProgram);
-    blurTable.draw();
-
-
-    // Draw to texture.
-    /*
+    // Draw the table.
     textureProgram.useProgram();
     textureProgram.setUniforms(projectionMatrix, texture); //texture //fboTextureId
     table.bindData(textureProgram);
     table.draw();
-    */
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // ---------------------
-
-    setupViewport(viewportWidth, viewportHeight);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    //
-    blurVerticalProgram.useProgram();
-    blurVerticalProgram.setUniforms(projectionMatrix, fboTextureId, blur); //fboTextureId //texture
-    blurTable.bindData(blurVerticalProgram);
-    blurTable.draw();
-
-    /*
-    // Draw the table.
-    textureProgram.useProgram();
-    textureProgram.setUniforms(projectionMatrix, fboTextureId); //texture //fboTextureId
-    table.bindData(textureProgram);
-    table.draw();
-    */
 
     // Draw the mallets.
-    /*
     colorProgram.useProgram();
     colorProgram.setUniforms(projectionMatrix);
     mallet.bindData(colorProgram);
     mallet.draw();
-    */
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // -------------------------------
+
+
+    // -------- render to fbo blur --------
+    glBindFramebuffer(GL_FRAMEBUFFER, fboBlurId);
+    setupViewport(fboWidth, fboWidth);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    //draw to texture
+    blurHorizontalProgram.useProgram();
+    blurHorizontalProgram.setUniforms(projectionMatrix, fboTextureId, blur);
+    blurTable.bindData(blurHorizontalProgram);
+    blurTable.draw();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // --------------------------------------
+
+
+    // -------- render to the screen ---------
+    setupViewport(viewportWidth, viewportHeight);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    blurVerticalProgram.useProgram();
+    blurVerticalProgram.setUniforms(projectionMatrix, fboBlurTextureId, blur); //fboTextureId //texture
+    blurTable.bindData(blurVerticalProgram);
+    blurTable.draw();
+    // ----------------------------------------
   }
 }
