@@ -35,12 +35,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
   // matrix
   private float[] projectionMatrix = new float[16];
-  //private float[] modelMatrix = new float[16];
-
-  protected float[] MVPMatrix = new float[16];
   protected float[] modelMatrix = new float[16];
-  protected float[] viewMatrix = new float[16];
-  //protected float[] projectionMatrix = new float[16];
 
   // data object
   private Table table;
@@ -65,8 +60,8 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
   int fboId;
   int fboTextureId;
   //should be power of 2 (POT)
-  int fboWidth = 256;
-  int fboHeight = 256;
+  int fboWidth = 1024;
+  int fboHeight = 1024;
 
   // viewport
   int viewportWidth;
@@ -112,10 +107,8 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     //Define texture parameters
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboWidth, fboHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
 
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
@@ -158,49 +151,16 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     System.arraycopy(temp, 0, projectionMatrix, 0, temp.length);
   }
 
-  private void setupFBOViewport(int width, int height) {
-    // Set the OpenGL viewport to fill the entire surface.
-    glViewport(0, 0, width, height);
-
-    // Create a new perspective projection matrix. The height will stay the same
-    // while the width will vary as per aspect ratio.
-    final float left = -1.0f;   //-ratio;
-    final float right = 1.0f;   //ratio;
-    final float bottom = -1.0f;
-    final float top = 1.0f;
-    final float near = -1.0f;   //1.0f;
-    final float far = 1.0f;     //10.0f;
-    Matrix.orthoM(projectionMatrix, 0, left, right, bottom, top, near, far);
-
-    // Position the eye behind the origin.
-    final float eyeX = 0.0f;
-    final float eyeY = 0.0f;
-    final float eyeZ = 1.0f;
-    // We are looking toward the distance
-    final float lookX = 0.0f;
-    final float lookY = 0.0f;
-    final float lookZ = 0.0f;
-    // Set our up vector. This is where our head would be pointing were we holding the camera.
-    final float upX = 0.0f;
-    final float upY = 1.0f;
-    final float upZ = 0.0f;
-    // Set the view matrix. This matrix can be said to represent the camera position.
-    // NOTE: In OpenGL 1, a ModelView matrix is used, which is a combination of a model and
-    // view matrix. In OpenGL 2, we can keep track of these matrices separately if we choose.
-    Matrix.setLookAtM(viewMatrix, 0, eyeX, eyeY, eyeZ, lookX, lookY, lookZ, upX, upY, upZ);
-
-    Matrix.setIdentityM(modelMatrix, 0);
-    Matrix.multiplyMM(MVPMatrix, 0, viewMatrix, 0, modelMatrix, 0);
-    Matrix.multiplyMM(MVPMatrix, 0, projectionMatrix, 0, MVPMatrix, 0);
-  }
-
   @Override
   public void onDrawFrame(GL10 gl) {
 
     // Do a complete rotation every 10 seconds.
-    long time = SystemClock.uptimeMillis() % 10000L;
+    long time = SystemClock.uptimeMillis() % 5000L;
     float angleInDegrees = (360.0f / 3000.0f) * ((int) time);
-    float blur = Math.min(2.0f,(float)((angleInDegrees % 360) / 120.0));   // blur goes from 0-2
+    float blur; // = Math.min(2.0f,(float)((angleInDegrees % 360) / 120.0));   // blur goes from 0-2
+    if (time < 2000) blur = 0;
+    else if (time < 4000) blur = (float) (2 - (4000 - time) / 1000.0);
+    else blur = 2.0f;
 
     Log.d(TAG, "TEST: blur = " + blur);
 
@@ -214,10 +174,20 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //draw to texture
+
     blurHorizontalProgram.useProgram();
     blurHorizontalProgram.setUniforms(projectionMatrix, texture, blur);
     blurTable.bindData(blurHorizontalProgram);
     blurTable.draw();
+
+
+    // Draw to texture.
+    /*
+    textureProgram.useProgram();
+    textureProgram.setUniforms(projectionMatrix, texture); //texture //fboTextureId
+    table.bindData(textureProgram);
+    table.draw();
+    */
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     // ---------------------
