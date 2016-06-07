@@ -4,13 +4,15 @@ import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.example.wangalbert.bookpractice.R;
 import com.example.wangalbert.bookpractice.objects.BlurTable;
 import com.example.wangalbert.bookpractice.objects.Mallet;
 import com.example.wangalbert.bookpractice.objects.Table;
-import com.example.wangalbert.bookpractice.program.BlurShaderProgram;
+import com.example.wangalbert.bookpractice.program.BlurHShaderProgram;
+import com.example.wangalbert.bookpractice.program.BlurVShaderProgram;
 import com.example.wangalbert.bookpractice.program.ColorShaderProgram;
 import com.example.wangalbert.bookpractice.program.TextureShaderProgram;
 import com.example.wangalbert.bookpractice.utils.MatrixHelper;
@@ -47,7 +49,8 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
   // shader program
   private TextureShaderProgram textureProgram;
-  private BlurShaderProgram blurProgram;
+  private BlurHShaderProgram blurHorizontalProgram;
+  private BlurVShaderProgram blurVerticalProgram;
   private ColorShaderProgram colorProgram;
 
   private int texture;
@@ -77,11 +80,12 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     mallet = new Mallet();
 
     textureProgram = new TextureShaderProgram(context);
-    blurProgram = new BlurShaderProgram(context);
+    blurHorizontalProgram = new BlurHShaderProgram(context);
+    blurVerticalProgram = new BlurVShaderProgram(context);
     colorProgram = new ColorShaderProgram(context);
 
     // load texture
-    texture = TextureHelper.loadTexture(context, R.drawable.air_hockey_surface);
+    texture = TextureHelper.loadTexture(context, R.drawable.texture);
 
     // ------------------- create fbo -----------------------------
     // generate fbo
@@ -189,6 +193,14 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
   @Override
   public void onDrawFrame(GL10 gl) {
+
+    // Do a complete rotation every 10 seconds.
+    long time = SystemClock.uptimeMillis() % 10000L;
+    float angleInDegrees = (360.0f / 3000.0f) * ((int) time);
+    float blur = Math.min(2.0f,(float)((angleInDegrees % 360) / 120.0));   // blur goes from 0-2
+
+    Log.d(TAG, "TEST: blur = " + blur);
+
     // Clear the rendering surface.
     //glClear(GL_COLOR_BUFFER_BIT);
 
@@ -199,9 +211,9 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //draw to texture
-    blurProgram.useProgram();
-    blurProgram.setUniforms(MVPMatrix, texture);
-    blurTable.bindData(blurProgram);
+    blurHorizontalProgram.useProgram();
+    blurHorizontalProgram.setUniforms(MVPMatrix, texture, blur);
+    blurTable.bindData(blurHorizontalProgram);
     blurTable.draw();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -210,18 +222,26 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     setupViewport(viewportWidth, viewportHeight);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // TODO use the texture from FBO
+    //
+    blurVerticalProgram.useProgram();
+    blurVerticalProgram.setUniforms(MVPMatrix, fboTextureId, blur);
+    blurTable.bindData(blurVerticalProgram);
+    blurTable.draw();
+
+    /*
     // Draw the table.
     textureProgram.useProgram();
-    // TODO so this is actually the textureID instead of fboID. If we create them first, they will have the same id.
     textureProgram.setUniforms(projectionMatrix, fboTextureId); //texture //fboTextureId
     table.bindData(textureProgram);
     table.draw();
+    */
 
     // Draw the mallets.
+    /*
     colorProgram.useProgram();
     colorProgram.setUniforms(projectionMatrix);
     mallet.bindData(colorProgram);
     mallet.draw();
+    */
   }
 }

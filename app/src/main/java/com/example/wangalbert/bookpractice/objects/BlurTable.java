@@ -2,7 +2,8 @@ package com.example.wangalbert.bookpractice.objects;
 
 
 import com.example.wangalbert.bookpractice.data.VertexArray;
-import com.example.wangalbert.bookpractice.program.BlurShaderProgram;
+import com.example.wangalbert.bookpractice.program.BlurHShaderProgram;
+import com.example.wangalbert.bookpractice.program.TextureShaderProgram;
 
 import static com.example.wangalbert.bookpractice.Constants.BYTES_PER_FLOAT;
 import static android.opengl.GLES20.*;
@@ -26,11 +27,11 @@ public class BlurTable {
     // Order of coordinates: X, Y, S, T
     // Triangle Fan
     0f,    0f,      0.5f, 0.5f,
-    -1.0f, -1.0f,   0f, 0.9f,
-    1.0f, -1.0f,   1f, 0.9f,
-    1.0f,  1.0f,   1f, 0.1f,
-    -1.0f,  1.0f,   0f, 0.1f,
-    -1.0f, -1.0f,   0f, 0.9f
+    -1.0f, -1.0f,   0f, 1.0f,
+    1.0f, -1.0f,   1f, 1.0f,
+    1.0f,  1.0f,   1f, 0.0f,
+    -1.0f,  1.0f,   0f, 0.0f,
+    -1.0f, -1.0f,   0f, 1.0f
   };
 
   private final VertexArray vertexArray;
@@ -39,7 +40,7 @@ public class BlurTable {
     vertexArray = new VertexArray(VERTEX_DATA);
   }
 
-  public void bindData(BlurShaderProgram textureProgram) {
+  public void bindData(TextureShaderProgram textureProgram) {
     vertexArray.setVertexAttribPointer(
       0,
       textureProgram.getPositionAttributeLocation(),
