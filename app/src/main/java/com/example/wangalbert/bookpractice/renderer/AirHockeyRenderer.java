@@ -64,8 +64,9 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
   // FBO
   int fboId;
   int fboTextureId;
-  int fboWidth = 1080;
-  int fboHeight = 1533;
+  //should be power of 2 (POT)
+  int fboWidth = 256;
+  int fboHeight = 256;
 
   // viewport
   int viewportWidth;
@@ -85,7 +86,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     colorProgram = new ColorShaderProgram(context);
 
     // load texture
-    texture = TextureHelper.loadTexture(context, R.drawable.texture);
+    texture = TextureHelper.loadTexture(context, R.drawable.air_hockey_surface);
 
     // ------------------- create fbo -----------------------------
     // generate fbo
@@ -111,8 +112,10 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     //Define texture parameters
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fboWidth, fboHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
@@ -206,13 +209,13 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
     // --- render to fbo ---
     glBindFramebuffer(GL_FRAMEBUFFER, fboId);
-    setupFBOViewport(fboWidth, fboWidth);
+    setupViewport(fboWidth, fboWidth);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     //draw to texture
     blurHorizontalProgram.useProgram();
-    blurHorizontalProgram.setUniforms(MVPMatrix, texture, blur);
+    blurHorizontalProgram.setUniforms(projectionMatrix, texture, blur);
     blurTable.bindData(blurHorizontalProgram);
     blurTable.draw();
 
@@ -224,7 +227,7 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
 
     //
     blurVerticalProgram.useProgram();
-    blurVerticalProgram.setUniforms(MVPMatrix, fboTextureId, blur);
+    blurVerticalProgram.setUniforms(projectionMatrix, fboTextureId, blur); //fboTextureId //texture
     blurTable.bindData(blurVerticalProgram);
     blurTable.draw();
 
