@@ -1,9 +1,7 @@
 package com.example.wangalbert.bookpractice.renderer;
 
 import android.content.Context;
-import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
-import android.opengl.Matrix;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -11,9 +9,11 @@ import com.example.wangalbert.bookpractice.R;
 import com.example.wangalbert.bookpractice.objects.BlurTable;
 import com.example.wangalbert.bookpractice.objects.Mallet;
 import com.example.wangalbert.bookpractice.objects.Table;
+import com.example.wangalbert.bookpractice.objects.Watermark;
 import com.example.wangalbert.bookpractice.program.BlurHShaderProgram;
 import com.example.wangalbert.bookpractice.program.BlurVShaderProgram;
 import com.example.wangalbert.bookpractice.program.ColorShaderProgram;
+import com.example.wangalbert.bookpractice.program.TextureOpacityShaderProgram;
 import com.example.wangalbert.bookpractice.program.TextureShaderProgram;
 import com.example.wangalbert.bookpractice.utils.MatrixHelper;
 import com.example.wangalbert.bookpractice.utils.TextureHelper;
@@ -42,37 +42,40 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
   private Table table;
   private BlurTable blurTable;
   private Mallet mallet;
+  private Watermark watermark;
 
   // shader program
   private TextureShaderProgram textureProgram;
   private BlurHShaderProgram blurHorizontalProgram;
   private BlurVShaderProgram blurVerticalProgram;
   private ColorShaderProgram colorProgram;
+  private TextureOpacityShaderProgram textureOpacityProgram;
 
-  private int texture;
   private Context context;
+
+  // texture
+  private int texture;
+  private int textureWatermark;
+
+  // FBO
+  private int fboId;
+  private int fboTextureId;
+  //should be power of 2 (POT)
+  private int fboWidth = 1024;
+  private int fboHeight = 1024;
+
+  // FBO
+  private int fboBlurId;
+  private int fboBlurTextureId;
+
+  // viewport
+  private int viewportWidth;
+  private int viewportHeight;
 
   // Constructor
   public AirHockeyRenderer(Context context) {
     this.context = context;
   }
-
-  // FBO
-  int fboId;
-  int fboTextureId;
-  //should be power of 2 (POT)
-  int fboWidth = 1024;
-  int fboHeight = 1024;
-
-  // FBO
-  int fboBlurId;
-  int fboBlurTextureId;
-
-
-
-  // viewport
-  int viewportWidth;
-  int viewportHeight;
 
   @Override
   public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -81,14 +84,17 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     table = new Table();
     blurTable = new BlurTable();
     mallet = new Mallet();
+    watermark = new Watermark();
 
     textureProgram = new TextureShaderProgram(context);
+    textureOpacityProgram = new TextureOpacityShaderProgram(context);
     blurHorizontalProgram = new BlurHShaderProgram(context);
     blurVerticalProgram = new BlurVShaderProgram(context);
     colorProgram = new ColorShaderProgram(context);
 
     // load texture
     texture = TextureHelper.loadTexture(context, R.drawable.air_hockey_surface);
+    textureWatermark = TextureHelper.loadTexture(context, R.drawable.logo_watermark);
 
     // create fbo
     int[] tmp = FrameBufferHelper.createFrameBuffer(fboWidth, fboHeight);
@@ -131,14 +137,24 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
   public void onDrawFrame(GL10 gl) {
     // -------- manage time -----------
     // Do a complete rotation every 10 seconds.
-    long time = SystemClock.uptimeMillis() % 5000L;
+    long time = SystemClock.uptimeMillis() % 8000L;
     float angleInDegrees = (360.0f / 3000.0f) * ((int) time);
     float blur; // = Math.min(2.0f,(float)((angleInDegrees % 360) / 120.0));   // blur goes from 0-2
-    if (time < 2000) blur = 0;
-    else if (time < 4000) blur = (float) (2 - (4000 - time) / 1000.0);
-    else blur = 2.0f;
+    float opacity;
+    if (time < 2000) {
+      blur = 0;
+      opacity = 0;
+    }
+    else if (time < 4000) {
+      blur = (float) (1 - (4000 - time) / 2000.0);
+      opacity = (float) (1 - (4000 - time) / 2000.0);
+    }
+    else {
+      blur = 1.0f;
+      opacity = 1.0f;
+    }
 
-    Log.d(TAG, "TEST: blur = " + blur);
+    Log.d(TAG, "TEST: blur = " + blur + ", opacity = " + opacity);
 
     // -------- render to fbo ---------
     glBindFramebuffer(GL_FRAMEBUFFER, fboId);
@@ -184,6 +200,11 @@ public class AirHockeyRenderer implements GLSurfaceView.Renderer {
     blurVerticalProgram.setUniforms(projectionMatrix, fboBlurTextureId, blur); //fboTextureId //texture
     blurTable.bindData(blurVerticalProgram);
     blurTable.draw();
+
+    textureOpacityProgram.useProgram();
+    textureOpacityProgram.setUniforms(projectionMatrix, textureWatermark, opacity);
+    watermark.bindData(textureOpacityProgram);
+    watermark.draw();
     // ----------------------------------------
   }
 }

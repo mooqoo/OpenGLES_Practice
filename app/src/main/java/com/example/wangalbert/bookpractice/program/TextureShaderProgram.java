@@ -1,7 +1,6 @@
 package com.example.wangalbert.bookpractice.program;
 
 import android.content.Context;
-import android.opengl.GLES20;
 
 import com.example.wangalbert.bookpractice.R;
 import static android.opengl.GLES20.*;
@@ -16,7 +15,7 @@ public class TextureShaderProgram extends ShaderProgram {
   private final static String TAG = "TextureShaderProgram";
 
   // Uniform locations
-  //private final int uMatrixLocation;
+  private final int uMatrixLocation;
   private final int uTextureUnitLocation;
 
   // Attribute locations
@@ -28,7 +27,7 @@ public class TextureShaderProgram extends ShaderProgram {
     super(context, R.raw.texture_vertex_shader, R.raw.texture_fragment_shader);
 
     // Retrieve uniform locations for the shader program.
-    //uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
+    uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
     uTextureUnitLocation = glGetUniformLocation(program, U_TEXTURE_UNIT);
 
     // Retrieve attribute locations for the shader program.
@@ -41,7 +40,7 @@ public class TextureShaderProgram extends ShaderProgram {
     super(context, vertexShaderResourceId, fragmentShaderResourceId);
 
     // Retrieve uniform locations for the shader program.
-    //uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
+    uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
     uTextureUnitLocation = glGetUniformLocation(program, U_TEXTURE_UNIT);
 
     // Retrieve attribute locations for the shader program.
@@ -51,7 +50,7 @@ public class TextureShaderProgram extends ShaderProgram {
 
   public void setUniforms(float[] matrix, int textureId) {
     // Pass the matrix into the shader program.
-    //glUniformMatrix4fv(uMatrixLocation, 1, false, matrix, 0);
+    glUniformMatrix4fv(uMatrixLocation, 1, false, matrix, 0);
 
     // Set the active texture unit to texture unit 0.
     glActiveTexture(GL_TEXTURE1);
